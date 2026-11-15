@@ -37,3 +37,14 @@ test('en conflit, la version modifiée le plus récemment gagne', () => {
   const remote = { tasks: [task('a', { title: 'récent', updatedAt: '2026-03-01T00:00:00.000Z' })] }
   assert.equal(mergeStates(local, remote).tasks[0].title, 'récent')
 })
+
+test('missions : la décision humaine la plus récente survit à une fusion avec une copie distante plus ancienne', () => {
+  const proposed = { id: 'm1', title: 'Audit', status: 'proposee', updatedAt: '2026-11-15T08:00:00.000Z' }
+  const approved = { ...proposed, status: 'approuvee', updatedAt: '2026-11-15T09:00:00.000Z' }
+  assert.equal(mergeStates({ agentMissions: [approved] }, { agentMissions: [proposed] }).agentMissions[0].status, 'approuvee')
+  // Et l'avancée de l'agent, plus récente que la copie locale, l'emporte dans l'autre sens.
+  const delivered = { ...approved, status: 'a_valider', updatedAt: '2026-11-15T10:00:00.000Z' }
+  assert.equal(mergeStates({ agentMissions: [approved] }, { agentMissions: [delivered] }).agentMissions[0].status, 'a_valider')
+  // Une mission créée par un agent pendant que l'app était hors ligne n'est pas perdue.
+  assert.equal(mergeStates({ agentMissions: [] }, { agentMissions: [proposed] }).agentMissions.length, 1)
+})

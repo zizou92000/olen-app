@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { TOOLS } from '../../server/mcp/tools.js'
-import { handleRpc } from '../../server/mcp/protocol.js'
+import { handleRpc, annotationsOf } from '../../server/mcp/protocol.js'
 import { applyTransition, needsHuman, delegableTasks, doneByAgent, cleanUrl, MAX_PENDING_PROPOSALS } from '../../src/lib/missions.js'
 
 // Faux client Supabase : une ligne user_state (mise à jour optimiste) et un journal d'activité.
@@ -150,4 +150,16 @@ test('chaque écriture sur le store est journalisée au nom de l’agent, pas le
   const ko = await call('demarrer_mission', { id: 'inconnue' })
   assert.ok(ko.result.isError)
   assert.equal(db.log.length, 1)
+})
+
+test('annotations MCP : un outil qui écrit n’est jamais annoncé en lecture seule', async () => {
+  for (const t of TOOLS) {
+    if (t.writes) assert.equal(annotationsOf(t.name).readOnlyHint, false, t.name)
+    if (annotationsOf(t.name).readOnlyHint) assert.ok(/^(lister|lire|voir|tableau|journal|taches|etsy)/.test(t.name), t.name)
+  }
+  for (const n of ['creer_projet_client', 'modifier_projet_client', 'envoyer_demande', 'repondre_demande', 'repondre_whatsapp', 'etsy_noter_fiche']) {
+    assert.equal(annotationsOf(n).readOnlyHint, false, n)
+  }
+  const list = await handleRpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, {})
+  assert.ok(list.result.tools.every(t => t.annotations && typeof t.annotations.readOnlyHint === 'boolean'))
 })
