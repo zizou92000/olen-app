@@ -6,6 +6,7 @@ import {
   Timer, Receipt, Trash2, Archive, Check, X, ExternalLink,
   CheckSquare, Clock, StickyNote, Calendar, Upload, Zap, Play, CalendarDays, ChevronRight,
 } from 'lucide-react'
+import ClientLinks from '@/components/clients/ClientLinks'
 import { useStore } from '@/store/useStore'
 import ViewContainer from '@/views/ViewContainer'
 import Drawer from '@/components/ui/Drawer'
@@ -416,6 +417,8 @@ function DashboardTab({ client, tasks, sessions, clientNotes, clientDocuments, c
             )}
           </div>
         </div>
+
+        <ClientLinks client={client} />
 
         {/* Actions */}
         <div className="flex gap-2 relative">

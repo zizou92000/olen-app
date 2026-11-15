@@ -2,6 +2,7 @@
 // L'XP est recalculée à partir de l'historique (tâches, sessions, revues) : elle est
 // rétroactive et ne stocke rien, sauf les quêtes réclamées (state.game.questClaims).
 
+import { doneByAgent } from './missions.js'
 import { localDateStr } from '@/lib/backup'
 import { isDue } from '@/lib/habits'
 import { prayerXpByDay } from '@/lib/prayers'
@@ -56,7 +57,7 @@ export function activityByDay(state) {
   const days = {}
   const get = d => (days[d] ||= { tasks: [], highDone: 0, focusMin: 0, reviewed: false })
   for (const t of state.tasks) {
-    if (t.status !== 'done' || !t.completedAt) continue
+    if (t.status !== 'done' || !t.completedAt || doneByAgent(t)) continue
     const day = get(dayOf(t.completedAt))
     day.tasks.push(t)
     if (t.impact === 'high') day.highDone++
@@ -199,7 +200,7 @@ export function computeGame(state, today = localDateStr(), now = Date.now()) {
   const addPole = (poleId, n) => { if (poleId) xpByPole[poleId] = (xpByPole[poleId] || 0) + n }
 
   // Tâches, avec le multiplicateur de combo selon l'enchaînement
-  const doneTasks = state.tasks.filter(t => t.status === 'done' && t.completedAt)
+  const doneTasks = state.tasks.filter(t => t.status === 'done' && t.completedAt && !doneByAgent(t))
     .sort((a, b) => new Date(a.completedAt) - new Date(b.completedAt))
   let chain = 0
   let prevAt = null

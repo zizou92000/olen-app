@@ -59,6 +59,8 @@ import Facturation from '@/components/views/Facturation'
 import Trophees from '@/components/views/Trophees'
 import StudioCreatif from '@/components/views/StudioCreatif'
 import EtsySourcing from '@/components/views/EtsySourcing'
+import Agents from '@/components/views/Agents'
+import AgentNotifications from '@/components/AgentNotifications'
 
 // three.js est lourd : la page 3D vit dans son propre chunk.
 const OpenSpace = lazy(() => import('@/components/views/OpenSpace'))
@@ -363,6 +365,7 @@ function AppInner() {
       case 'inbox':      return <Inbox onNavigate={setActivePage} />
       case 'calendrier': return <Calendrier />
       case 'rendez-vous': return <RendezVous />
+      case 'agents':      return <Agents onNavigate={setActivePage} />
       case 'taches':     return <Taches />
       case 'sessions':   return (
         <Sessions
@@ -479,6 +482,7 @@ function AppInner() {
       <VoiceCapture />
       <CheckinOverlay />
       <AppointmentReminders onNavigate={setActivePage} />
+      <AgentNotifications onNavigate={setActivePage} />
       <WeeklyWrapped />
       <WinterArcLayer />
 

@@ -4,10 +4,11 @@ import {
   BookOpen, GraduationCap,
   Users, LayoutDashboard, ChevronDown, LogOut, HardDrive, Plug, Flame,
   Pencil, Trash2, Check, X, Plus, Menu, Building2, ClipboardCheck, MessageCircle, Repeat, Target, KanbanSquare, Receipt, Trophy, Mountain, Clapperboard, ShoppingBag,
-} from 'lucide-react'
+  Bot } from 'lucide-react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { needsHuman } from '@/lib/missions'
 import { useStore } from '@/store/useStore'
 import { useAuth } from '@/contexts/AuthContext'
 import { useGame } from '@/hooks/useGame'
@@ -30,6 +31,7 @@ const NAV_GROUPS = [
       { id: 'journee',    label: 'Journée',     Icon: Home },
       { id: 'inbox',      label: 'Inbox',       Icon: Inbox,       badge: true },
       { id: 'messages',   label: 'Messages',    Icon: MessageCircle, waBadge: true },
+      { id: 'agents',     label: 'Agents',      Icon: Bot,         agentBadge: true },
       { id: 'calendrier', label: 'Calendrier',  Icon: Calendar },
       { id: 'rendez-vous', label: 'Rendez-vous', Icon: CalendarClock },
       { id: 'sessions',   label: 'Sessions',    Icon: Timer,       timer: true },
@@ -322,7 +324,7 @@ function MobileMenuDrawer({ isOpen, onClose, activePage, setActivePage, projects
 // ─── Fixed full-height sidebar ────────────────────────────────────────────────
 
 // Barre latérale repliée en rail d'icônes, pour les pages plein écran (open space).
-function NavRail({ activePage, setActivePage, projects, inboxCount, waUnread }) {
+function NavRail({ activePage, setActivePage, projects, inboxCount, waUnread, agentCount }) {
   const game = useGame()
   const Item = ({ id, label, Icon, emoji, badge }) => {
     const active = activePage === id
@@ -344,7 +346,7 @@ function NavRail({ activePage, setActivePage, projects, inboxCount, waUnread }) 
       </button>
       <div className="flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto" style={{ scrollbarWidth: 'none' }}>
         {NAV_GROUPS.flatMap(g => g.items).map(it => (
-          <Item key={it.id} {...it} badge={it.badge ? inboxCount : it.waBadge ? waUnread : 0} />
+          <Item key={it.id} {...it} badge={it.badge ? inboxCount : it.waBadge ? waUnread : it.agentBadge ? agentCount : 0} />
         ))}
         <span className="my-2 h-px w-6 bg-[var(--border-medium)]" />
         {projects.map(p => <Item key={p.id} id={`projet_${p.id}`} label={p.name} emoji={p.emoji} />)}
@@ -363,6 +365,7 @@ export default function FloatingNavbar({ activePage, setActivePage, timerRunning
   const [addingProject, setAddingProject] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const inboxCount = state.inbox.length
+  const agentCount = needsHuman(state.agentMissions).length
   const wa = useWhatsApp()
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
@@ -421,7 +424,7 @@ export default function FloatingNavbar({ activePage, setActivePage, timerRunning
 
   return (
     <>
-      {compact && <NavRail activePage={activePage} setActivePage={setActivePage} projects={state.projects} inboxCount={inboxCount} waUnread={wa.unread} />}
+      {compact && <NavRail activePage={activePage} setActivePage={setActivePage} projects={state.projects} inboxCount={inboxCount} waUnread={wa.unread} agentCount={agentCount} />}
 
       {/* Desktop fixed sidebar */}
       <aside
@@ -448,7 +451,7 @@ export default function FloatingNavbar({ activePage, setActivePage, timerRunning
             <div key={group.label}>
               <SectionLabel>{group.label}</SectionLabel>
               <div className="flex flex-col gap-0.5">
-                {group.items.map(({ id, label, Icon, badge, waBadge, timer }) => (
+                {group.items.map(({ id, label, Icon, badge, waBadge, agentBadge, timer }) => (
                   <NavRow
                     key={id}
                     id={id}
@@ -456,7 +459,7 @@ export default function FloatingNavbar({ activePage, setActivePage, timerRunning
                     Icon={Icon}
                     isActive={activePage === id}
                     onClick={setActivePage}
-                    badgeCount={badge ? inboxCount : waBadge ? wa.unread : 0}
+                    badgeCount={badge ? inboxCount : waBadge ? wa.unread : agentBadge ? agentCount : 0}
                     timerActive={timer && timerRunning}
                   />
                 ))}

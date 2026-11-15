@@ -78,6 +78,8 @@ const INITIAL_STATE = {
   montages: [],
   // v8 : Sourcing & comparatif Etsy — sélections propres à chaque compte (aucune donnée Etsy réelle stockée ici).
   etsy: { mode: 'demo', shops: [], collections: [], favorites: [], notes: {}, columns: null, observations: [] },
+  // Missions d'agents (OpenClaw, Uly) : propositions, accords et livraisons. Voir src/lib/missions.js.
+  agentMissions: [],
   // Traces des suppressions ({ id: date }) : la synchro s'en sert pour ne pas ressusciter un élément supprimé.
   _deleted: {},
 }
@@ -301,11 +303,25 @@ function reducer(state, action) {
   }
 }
 
+// Une tâche qu'un agent avait terminée, puis que l'utilisateur termine lui-même dans l'app, redevient la sienne.
+// (Sauf quand l'action précise elle-même l'auteur : validation d'une livraison d'agent.)
+function humanCompletions(prev, next, action) {
+  if (next.tasks === prev.tasks || action.payload?.completedBy) return next
+  const before = new Map(prev.tasks.map(t => [t.id, t]))
+  let changed = false
+  const tasks = next.tasks.map(t => {
+    if (t.status !== 'done' || !t.completedBy || before.get(t.id)?.status === 'done') return t
+    changed = true
+    return { ...t, completedBy: null }
+  })
+  return changed ? { ...next, tasks } : next
+}
+
 // Toute action passe ici : les éléments modifiés sont datés et les suppressions mémorisées (voir trackChanges).
 function trackedReducer(state, action) {
   const next = reducer(state, action)
   if (next === state || action.type === 'HYDRATE_STATE') return next
-  return trackChanges(state, next)
+  return trackChanges(state, humanCompletions(state, next, action))
 }
 
 function loadState() {
@@ -341,6 +357,7 @@ function loadState() {
           creatives: parsed.creatives || [],
           creativeAssets: parsed.creativeAssets || [],
           montages: parsed.montages || [],
+          agentMissions: parsed.agentMissions || [],
           etsy: { ...INITIAL_STATE.etsy, ...(parsed.etsy || {}) },
           settings: { ...INITIAL_STATE.settings, ...(parsed.settings || {}), prayerTimes: { ...INITIAL_STATE.settings.prayerTimes, ...(parsed.settings?.prayerTimes || {}) } },
         }

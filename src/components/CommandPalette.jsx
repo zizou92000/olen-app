@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react'
 import {
   Home, Inbox, Calendar, CalendarClock, CheckSquare, Timer, BookOpen, GraduationCap,
   Users, FileJson, Sun, Moon, Plus, Zap, Focus, ClipboardCheck,
-  Keyboard, Folder, LayoutGrid, Play, Database, Building2, HardDrive, MessageCircle, Repeat, Target, KanbanSquare, Receipt, Trophy, Mountain, Clapperboard, ShoppingBag,
+  Keyboard, Folder, LayoutGrid, Play, Database, Building2, HardDrive, MessageCircle, Repeat, Target, KanbanSquare, Receipt, Trophy, Mountain, Clapperboard, ShoppingBag, Bot,
 } from 'lucide-react'
 import {
   CommandDialog, CommandInput, CommandList, CommandEmpty,
@@ -22,6 +22,7 @@ const PAGES = [
   { id: 'donnees', label: 'Données & sauvegardes', Icon: HardDrive },
   { id: 'inbox', label: 'Inbox', Icon: Inbox, kbd: 'G I' },
   { id: 'messages', label: 'Messages WhatsApp', Icon: MessageCircle, kbd: 'G M' },
+  { id: 'agents', label: 'Agents et missions (OpenClaw)', Icon: Bot },
   { id: 'habitudes', label: 'Habitudes', Icon: Repeat },
   { id: 'objectifs', label: 'Objectifs du trimestre', Icon: Target },
   { id: 'pipeline', label: 'Pipeline commercial', Icon: KanbanSquare },

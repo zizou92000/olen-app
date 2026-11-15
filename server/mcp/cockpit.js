@@ -1,6 +1,7 @@
 // Outils MCP branchés sur le store réel du Cockpit (user_state) : tâches, projets,
 // Studio Créatif (veille, assets, montages) et Sourcing Etsy. Utilisables par Claude, ChatGPT, Codex…
 import { readState, mutateState, findById, newId } from './state.js'
+import { needsHuman } from '../../src/lib/missions.js'
 import { demoDataset } from '../../src/lib/etsy/demo.js'
 import { estimateListingSales } from '../../src/lib/etsy/estimation.js'
 import { liveClient, loadShop, searchProducts } from '../etsy/service.js'
@@ -39,7 +40,7 @@ function pick(obj, keys) {
   return Object.fromEntries(keys.filter(k => obj[k] !== undefined).map(k => [k, obj[k]]))
 }
 
-const taskView = t => pick(t, ['id', 'title', 'projectId', 'status', 'impact', 'dueDate', 'today', 'notes', 'goalId', 'createdAt', 'completedAt'])
+const taskView = t => pick(t, ['id', 'title', 'projectId', 'clientId', 'status', 'impact', 'dueDate', 'today', 'notes', 'goalId', 'createdAt', 'completedAt', 'createdBy', 'completedBy'])
 const creativeView = c => pick(c, ['id', 'competitor', 'platform', 'format', 'title', 'sourceUrl', 'notes', 'tags', 'status', 'verdict', 'score', 'angle', 'hook', 'adaptation', 'createdAt'])
 
 async function signedUrl(ctx, item) {
@@ -70,8 +71,13 @@ export const COCKPIT_TOOLS = [
         studio: {
           creas_a_analyser: (s.creatives || []).filter(c => c.status === 'a_analyser').length,
           creas_total: (s.creatives || []).length,
-          assets: (s.assets || []).length,
+          assets: (s.creativeAssets || []).length,
           montages_en_cours: (s.montages || []).filter(m => m.status !== 'livre').map(m => pick(m, ['id', 'title', 'status', 'aspect'])),
+        },
+        agents: {
+          a_decider: needsHuman(s.agentMissions).length,
+          missions_approuvees: (s.agentMissions || []).filter(m => m.status === 'approuvee').length,
+          missions_en_cours: (s.agentMissions || []).filter(m => m.status === 'en_cours').length,
         },
         etsy: { mode: s.etsy?.mode || 'demo', boutiques_suivies: (s.etsy?.shops || []).map(x => pick(x, ['id', 'name', 'source'])) },
       }
@@ -109,12 +115,13 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'creer_tache',
+    writes: true,
     description: 'Crée une tâche dans un projet du Cockpit.',
     inputSchema: {
       type: 'object',
       required: ['title'],
       properties: {
-        title: { type: 'string' }, project_id: ID, notes: { type: 'string' },
+        title: { type: 'string' }, project_id: ID, client_id: ID, notes: { type: 'string' },
         impact: { type: 'string', enum: IMPACT }, due_date: DATE,
         today: { type: 'boolean', description: 'À faire aujourd’hui' },
       },
@@ -122,8 +129,9 @@ export const COCKPIT_TOOLS = [
     async run(args, ctx) {
       return mutateState(ctx, s => {
         assertProject(s, args.project_id)
+        if (args.client_id) findById(s.clients, args.client_id, 'Client')
         const task = {
-          id: newId(), title: str(args.title, 300), projectId: args.project_id || null, status: 'todo',
+          id: newId(), title: str(args.title, 300), projectId: args.project_id || null, clientId: args.client_id || null, status: 'todo',
           impact: args.impact || 'medium', ship80: false, ship80Delivered: false, today: !!args.today,
           dueDate: args.due_date || null, notes: str(args.notes) || '', tags: [], checklist: [],
           orderIndex: Date.now(), createdAt: now(), updatedAt: now(), completedAt: null, createdBy: ctx.actorLabel,
@@ -135,12 +143,13 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'modifier_tache',
+    writes: true,
     description: 'Met à jour une tâche : statut (todo / inprogress / done), titre, notes, impact, échéance, projet.',
     inputSchema: {
       type: 'object',
       required: ['id'],
       properties: {
-        id: ID, title: { type: 'string' }, notes: { type: 'string' }, project_id: ID,
+        id: ID, title: { type: 'string' }, notes: { type: 'string' }, project_id: ID, client_id: ID,
         status: { type: 'string', enum: TASK_STATUS }, impact: { type: 'string', enum: IMPACT },
         due_date: DATE, today: { type: 'boolean' },
       },
@@ -152,11 +161,15 @@ export const COCKPIT_TOOLS = [
         if (args.title !== undefined) t.title = str(args.title, 300) || t.title
         if (args.notes !== undefined) t.notes = args.notes
         if (args.project_id !== undefined) t.projectId = args.project_id
+        if (args.client_id) findById(s.clients, args.client_id, 'Client')
+        if (args.client_id !== undefined) t.clientId = args.client_id || null
         if (args.impact) t.impact = args.impact
         if (args.due_date !== undefined) t.dueDate = args.due_date
         if (args.today !== undefined) t.today = args.today
         if (args.status && args.status !== t.status) {
           t.completedAt = args.status === 'done' ? now() : null
+          // Terminée par un agent : ne compte pas dans l'XP ni les séries de l'utilisateur.
+          t.completedBy = args.status === 'done' ? ctx.actorLabel : null
           t.status = args.status
         }
         t.updatedAt = now()
@@ -198,6 +211,7 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'ajouter_crea',
+    writes: true,
     description: 'Ajoute une créa concurrente à la veille (lien vers la pub, notes, texte).',
     inputSchema: {
       type: 'object',
@@ -224,6 +238,7 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'enregistrer_analyse_crea',
+    writes: true,
     description: "Dépose ton analyse d'une créa (verdict dupliquer / adapter / ignorer, score, angle, accroche, proposition d'adaptation). Elle s'ajoute à l'historique à ton nom ; verdict, score, angle, accroche et proposition ne remplissent la fiche que s'ils sont vides, sauf si appliquer = true.",
     inputSchema: {
       type: 'object',
@@ -265,7 +280,7 @@ export const COCKPIT_TOOLS = [
     },
     async run(args, ctx) {
       const { state } = await readState(ctx)
-      const list = (state.assets || []).filter(a => !args.kind || a.kind === args.kind).slice(0, args.limit ?? 50)
+      const list = (state.creativeAssets || []).filter(a => !args.kind || a.kind === args.kind).slice(0, args.limit ?? 50)
       return Promise.all(list.map(async a => ({
         ...pick(a, ['id', 'title', 'kind', 'source', 'prompt', 'tags', 'projectId', 'createdAt']),
         ...(args.avec_liens ? { mediaUrl: await signedUrl(ctx, a) } : {}),
@@ -274,6 +289,7 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'ajouter_asset',
+    writes: true,
     description: 'Ajoute un asset au Studio : un lien vers un média, ou un texte (script, voix off, accroches) dans « contenu ».',
     inputSchema: {
       type: 'object',
@@ -292,7 +308,7 @@ export const COCKPIT_TOOLS = [
           url: str(args.url, 2000), text: str(args.contenu, 20000), prompt: str(args.prompt), tags: (args.tags || []).slice(0, 20),
           projectId: args.project_id || null, createdAt: now(), updatedAt: now(), createdBy: ctx.actorLabel,
         }
-        s.assets = [a, ...(s.assets || [])]
+        s.creativeAssets = [a, ...(s.creativeAssets || [])]
         return pick(a, ['id', 'title', 'kind', 'url'])
       })
     },
@@ -309,6 +325,7 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'creer_montage',
+    writes: true,
     description: 'Crée un montage (brief) dans le Studio, par exemple à partir d’une créa à dupliquer.',
     inputSchema: {
       type: 'object',
@@ -329,6 +346,7 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'modifier_montage',
+    writes: true,
     description: "Met à jour le titre, le brief ou le statut d'un montage.",
     inputSchema: {
       type: 'object',
@@ -430,6 +448,7 @@ export const COCKPIT_TOOLS = [
   },
   {
     name: 'etsy_noter_fiche',
+    writes: true,
     description: 'Ajoute ou remplace la note de sourcing sur une fiche Etsy (ton analyse, idée de produit…) et peut la mettre en favori.',
     inputSchema: {
       type: 'object',

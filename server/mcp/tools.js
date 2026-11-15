@@ -5,6 +5,7 @@
 import { sendText, normalizePhone } from '../whatsapp/core.js'
 import { summarizeConversations } from '../../src/lib/whatsapp.js'
 import { COCKPIT_TOOLS } from './cockpit.js'
+import { MISSION_TOOLS } from './missions.js'
 
 const DATE = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'Date AAAA-MM-JJ' }
 const UUID = { type: 'string', description: 'Identifiant (UUID)' }
@@ -344,6 +345,7 @@ const SQL_TOOLS = [
   },
 ]
 
-// Les outils branchés sur le store de l'app (cockpit.js) remplacent leurs anciens équivalents SQL.
-const cockpitNames = new Set(COCKPIT_TOOLS.map(t => t.name))
-export const TOOLS = [...COCKPIT_TOOLS, ...SQL_TOOLS.filter(t => !cockpitNames.has(t.name))]
+// Les outils branchés sur le store de l'app (cockpit.js, missions.js) remplacent leurs anciens équivalents SQL.
+const STORE_TOOLS = [...COCKPIT_TOOLS, ...MISSION_TOOLS]
+const storeNames = new Set(STORE_TOOLS.map(t => t.name))
+export const TOOLS = [...STORE_TOOLS, ...SQL_TOOLS.filter(t => !storeNames.has(t.name))]

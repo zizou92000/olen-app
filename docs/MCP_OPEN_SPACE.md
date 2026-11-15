@@ -2,6 +2,8 @@
 
 Fondations de l'open space : pôles → clients → projets clients → tâches, demandes aux prestataires, et un serveur MCP pour que Claude et Codex agissent dessus.
 
+> Missions d'agents (OpenClaw, Uly), dossiers clients et garde-fous : voir `docs/AGENTS_MISSIONS.md`.
+
 ## Ce qui existe
 
 | Élément | Fichier |
