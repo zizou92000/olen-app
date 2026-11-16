@@ -64,7 +64,7 @@ async function writeAndNotify(ctx, fn) {
   const view = await mutateState(ctx, s => {
     const v = fn(s)
     const m = (s.agentMissions || []).find(x => x.id === v.id)
-    snap = { ownerPhone: s.settings?.ownerWhatsApp || null, mission: structuredClone(m), client: (s.clients || []).find(c => c.id === m?.clientId)?.name || null }
+    snap = { ownerPhone: s.settings?.ownerWhatsApp || null, telegramChatId: s.settings?.telegramChatId || null, mission: structuredClone(m), client: (s.clients || []).find(c => c.id === m?.clientId)?.name || null }
     return v
   })
   return { ...view, notification: await notifyMission(ctx, snap) }

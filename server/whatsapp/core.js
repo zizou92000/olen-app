@@ -19,8 +19,14 @@ export function verifySignature(rawBody, header, secret) {
 // Compte Cockpit qui reçoit les messages : celui dont l'email est WHATSAPP_OWNER_EMAIL.
 let ownerCache = null
 export async function resolveOwnerId(db, email = process.env.WHATSAPP_OWNER_EMAIL) {
+  if (!email) {
+    // Cockpit à un seul utilisateur : sans email configuré, le propriétaire est l'unique compte synchronisé.
+    const { data, error } = await db.from('user_state').select('user_id').limit(2)
+    if (error) throw error
+    if (data?.length === 1) return data[0].user_id
+    throw new Error('WHATSAPP_OWNER_EMAIL doit être défini (plusieurs comptes ou aucun).')
+  }
   if (ownerCache?.email === email) return ownerCache.id
-  if (!email) throw new Error('WHATSAPP_OWNER_EMAIL doit être défini.')
   const { data, error } = await db.auth.admin.listUsers({ perPage: 1000 })
   if (error) throw error
   const user = data.users.find(u => u.email?.toLowerCase() === email.toLowerCase())

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useExternalCalendars } from '@/hooks/useExternalCalendars'
 import { useWhatsApp } from '@/contexts/WhatsAppContext'
 import AgentsWhatsApp from '@/components/integrations/AgentsWhatsApp'
+import TelegramAgents from '@/components/integrations/TelegramAgents'
 import { Input } from '@/components/ui/input'
 import { useGmail } from '@/contexts/GmailContext'
 import { toast } from '@/lib/toast'
@@ -290,6 +291,7 @@ export default function Integrations() {
         <McpCard origin={origin} />
 
         <AppleCalendarCard />
+        <TelegramAgents />
         <WhatsAppCard origin={origin} />
         <IntegrationCard Icon={MessageSquare} color="#611f69" name="Slack" description="Messages directs et mentions importantes dans le bandeau « À traiter »." status={<StatusPill tone="off">Bientôt</StatusPill>} />
       </div>

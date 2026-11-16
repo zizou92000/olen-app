@@ -250,7 +250,7 @@ export default function Agents({ onNavigate }) {
         </div>
         <div className="flex flex-col items-end gap-1">
           <Button variant="outline" size="sm" onClick={() => onNavigate('integrations')}><Play size={13} /> Connexion des agents</Button>
-          <span className="text-[11px] text-[var(--text-tertiary)]">{state.settings?.ownerWhatsApp ? 'Prévenu aussi sur WhatsApp' : 'Pas encore prévenu sur WhatsApp'}</span>
+          <span className="text-[11px] text-[var(--text-tertiary)]">{state.settings?.telegramChatId ? 'Prévenu sur Telegram' : state.settings?.ownerWhatsApp ? 'Prévenu sur WhatsApp' : 'Pas encore prévenu sur ton téléphone'}</span>
         </div>
       </header>
 
