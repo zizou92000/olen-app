@@ -7,6 +7,20 @@ export function normalizePhone(phone) {
   return String(phone || '').replace(/[^\d]/g, '').replace(/^00/, '')
 }
 
+// Numéro saisi par l'utilisateur -> format international sans « + » (06 12 34 56 78 devient 33612345678).
+export function toInternational(input, countryCode = '33') {
+  const digits = String(input || '').replace(/[^\d]/g, '')
+  if (digits.startsWith('00')) return digits.slice(2)
+  if (digits.startsWith('0') && digits.length === 10) return countryCode + digits.slice(1)
+  return digits
+}
+
+// +33 6 •• •• •• 88 : pour afficher un numéro sans l'exposer en entier.
+export function maskPhone(phone) {
+  const p = normalizePhone(phone)
+  return p.length < 6 ? '' : `+${p.slice(0, 2)} ${p.slice(2, 3)} •• •• •• ${p.slice(-2)}`
+}
+
 // Conversations : dernier message, nombre de non lus et ouverture de la fenêtre de 24 h.
 export function summarizeConversations(rows, now = new Date()) {
   const byPhone = new Map()

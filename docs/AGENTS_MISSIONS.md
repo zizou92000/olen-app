@@ -25,6 +25,10 @@ Garde-fous côté serveur : une seule mission active par tâche, 5 propositions 
 - Données : `state.agentMissions` (store, synchronisé dans `user_state`), `client.links` et `client.brief` sur les fiches clients, `task.clientId`, `task.createdBy`, `task.completedBy`, `task.agentOptOut`.
 - Interface : page `Agents` (`src/components/views/Agents.jsx`), pastille dans la barre « À traiter », badge dans la navigation, notifications (`AgentNotifications`), liens du dossier dans la fiche client (`ClientLinks`).
 
+## Sur WhatsApp
+
+Les propositions, questions, livraisons et échecs sont aussi envoyés sur WhatsApp, et l'utilisateur peut répondre OUI / NON / PLUS TARD / JAMAIS / REP depuis son numéro enregistré (`server/whatsapp/notify.js`, `server/whatsapp/agents.js`, `src/lib/missionCommands.js`). Mise en place : `docs/WHATSAPP.md`, section « Agents sur WhatsApp ». Ces décisions passent par le webhook signé, jamais par un outil MCP.
+
 ## Autres règles
 
 - Une tâche terminée par un agent porte `completedBy` et ne rapporte ni XP ni série (`doneByAgent`). Si l'utilisateur la termine lui-même dans l'app, elle redevient la sienne.

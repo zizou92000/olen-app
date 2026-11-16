@@ -1,4 +1,7 @@
 {
   "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
-  "crons": [{ "path": "/api/etsy-track", "schedule": "0 5 * * *" }]
+  "crons": [
+    { "path": "/api/etsy-track", "schedule": "0 5 * * *" },
+    { "path": "/api/agents-notify", "schedule": "0 7 * * *" }
+  ]
 }

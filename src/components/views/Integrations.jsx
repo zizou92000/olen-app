@@ -4,6 +4,7 @@ import { useStore, nanoid } from '@/store/useStore'
 import { useAuth } from '@/contexts/AuthContext'
 import { useExternalCalendars } from '@/hooks/useExternalCalendars'
 import { useWhatsApp } from '@/contexts/WhatsAppContext'
+import AgentsWhatsApp from '@/components/integrations/AgentsWhatsApp'
 import { Input } from '@/components/ui/input'
 import { useGmail } from '@/contexts/GmailContext'
 import { toast } from '@/lib/toast'
@@ -237,6 +238,7 @@ function WhatsAppCard({ origin }) {
         <li>Dans Vercel, ajoute <code>WHATSAPP_TOKEN</code> (jeton permanent d'un utilisateur système), <code>WHATSAPP_PHONE_NUMBER_ID</code>, <code>WHATSAPP_VERIFY_TOKEN</code>, <code>WHATSAPP_APP_SECRET</code>, <code>WHATSAPP_OWNER_EMAIL</code> (l'email de ton compte Cockpit) et <code>SUPABASE_SERVICE_ROLE_KEY</code>.</li>
         <li>Exécute la migration <code>007_whatsapp.sql</code> dans Supabase.</li>
       </ol>
+      <AgentsWhatsApp />
       <p className="text-[11px] text-[var(--text-tertiary)]">Règle WhatsApp : tu peux répondre librement pendant 24 h après le dernier message d'un client ; au-delà, seul un modèle validé par Meta est autorisé. Le guide complet est dans <code>docs/WHATSAPP.md</code>.</p>
     </IntegrationCard>
   )

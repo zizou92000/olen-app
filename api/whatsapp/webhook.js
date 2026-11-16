@@ -1,6 +1,7 @@
 // Webhook WhatsApp Business : GET = vérification par Meta, POST = messages et statuts.
 import { serviceClient } from '../../server/mcp/auth.js'
 import { ingestWebhook, resolveOwnerId, verifySignature } from '../../server/whatsapp/core.js'
+import { findOwnerCommands, runOwnerCommands } from '../../server/whatsapp/agents.js'
 
 async function readRaw(req) {
   const chunks = []
@@ -25,7 +26,11 @@ export default async function handler(req, res) {
   try {
     const db = serviceClient()
     const ownerId = await resolveOwnerId(db)
-    await ingestWebhook(JSON.parse(raw.toString('utf8')), db, ownerId)
+    const payload = JSON.parse(raw.toString('utf8'))
+    const found = await findOwnerCommands(payload, db, ownerId).catch(() => null)
+    await ingestWebhook(payload, db, ownerId)
+    // Les décisions sur les missions d'agents ne doivent jamais faire échouer l'enregistrement du message.
+    await runOwnerCommands(found, db, ownerId).catch(err => console.error('[whatsapp] commandes :', err.message))
     return res.status(200).json({ ok: true })
   } catch (err) {
     // 500 : Meta renverra l'événement plus tard, rien n'est perdu.

@@ -91,7 +91,7 @@ export async function sendText({ db, userId, to, text, via = 'app', fetchImpl = 
   if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) throw new Error('WHATSAPP_TOKEN et WHATSAPP_PHONE_NUMBER_ID doivent être définis.')
   const last = await lastInboundAt(db, userId, phone)
   if (!last || now - last > WINDOW_MS) {
-    throw new Error("Hors de la fenêtre de 24 h : WhatsApp n'autorise qu'un modèle de message validé par Meta tant que le client n'a pas réécrit.")
+    throw Object.assign(new Error("Hors de la fenêtre de 24 h : WhatsApp n'autorise qu'un modèle de message validé par Meta tant que le client n'a pas réécrit."), { code: 'WINDOW_CLOSED' })
   }
   const res = await fetchImpl(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
@@ -103,6 +103,31 @@ export async function sendText({ db, userId, to, text, via = 'app', fetchImpl = 
   const row = {
     user_id: userId, wa_message_id: json.messages?.[0]?.id || null, contact_phone: phone,
     direction: 'out', type: 'text', body: text.trim(), status: 'sent', sent_via: via, created_at: now.toISOString(),
+  }
+  const { data, error } = await db.from('wa_messages').insert(row).select().single()
+  if (error) throw error
+  return data
+}
+
+// Message « modèle » (validé par Meta) : seul autorisé hors de la fenêtre de 24 h. Les paramètres tiennent sur une ligne.
+export async function sendTemplate({ db, userId, to, name, lang = 'fr', params = [], logBody = null, via = 'app', fetchImpl = fetch, env = process.env, now = new Date() }) {
+  const phone = normalizePhone(to)
+  if (!phone || !name) throw new Error('Destinataire et nom de modèle requis.')
+  if (!env.WHATSAPP_TOKEN || !env.WHATSAPP_PHONE_NUMBER_ID) throw new Error('WHATSAPP_TOKEN et WHATSAPP_PHONE_NUMBER_ID doivent être définis.')
+  const clean = p => String(p).replace(/[\r\n\t]+/g, ' · ').replace(/ {2,}/g, ' ').trim().slice(0, 500)
+  const res = await fetchImpl(`${GRAPH}/${env.WHATSAPP_PHONE_NUMBER_ID}/messages`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.WHATSAPP_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp', recipient_type: 'individual', to: phone, type: 'template',
+      template: { name, language: { code: lang }, components: params.length ? [{ type: 'body', parameters: params.map(p => ({ type: 'text', text: clean(p) })) }] : [] },
+    }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error?.message || `WhatsApp a répondu ${res.status}.`)
+  const row = {
+    user_id: userId, wa_message_id: json.messages?.[0]?.id || null, contact_phone: phone,
+    direction: 'out', type: 'template', body: logBody || params.map(clean).join(' '), status: 'sent', sent_via: via, created_at: now.toISOString(),
   }
   const { data, error } = await db.from('wa_messages').insert(row).select().single()
   if (error) throw error

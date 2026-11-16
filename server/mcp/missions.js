@@ -2,6 +2,7 @@
 // Un agent (OpenClaw, Uly…) lit les tâches, PROPOSE une mission, puis n'agit qu'après l'accord donné
 // par l'humain dans l'app. Aucun outil de ce fichier ne permet d'approuver, de refuser ni de valider.
 import { readState, mutateState, findById, newId } from './state.js'
+import { notifyMission } from '../whatsapp/notify.js'
 import {
   MISSION_TYPES, MISSION_STATUS, ACTIVE_STATUS, MAX_PENDING_PROPOSALS, CLIENT_LINK_KINDS,
   applyTransition, withEvent, activeMissionForTask, delegableTasks, isSnoozed, cleanUrl,
@@ -54,6 +55,19 @@ function missionView(m, state, full = false) {
   }
   if (!full) return base
   return { ...base, plan: m.plan, livrable: m.deliverable, manque: m.missing || [], limites: m.limits || null, resultat: m.result || null, liens_client: client?.links || [], evenements: m.events || [] }
+}
+
+// Écrit, puis prévient l'utilisateur sur WhatsApp si la mission attend une décision de sa part.
+// Le statut de l'envoi est renvoyé à l'agent (champ « notification ») ; un échec d'envoi ne fait jamais échouer l'outil.
+async function writeAndNotify(ctx, fn) {
+  let snap = null
+  const view = await mutateState(ctx, s => {
+    const v = fn(s)
+    const m = (s.agentMissions || []).find(x => x.id === v.id)
+    snap = { ownerPhone: s.settings?.ownerWhatsApp || null, mission: structuredClone(m), client: (s.clients || []).find(c => c.id === m?.clientId)?.name || null }
+    return v
+  })
+  return { ...view, notification: await notifyMission(ctx, snap) }
 }
 
 function assertAgentOwns(m, ctx) {
@@ -174,7 +188,7 @@ export const MISSION_TOOLS = [
       },
     },
     async run(args, ctx) {
-      return mutateState(ctx, s => {
+      return writeAndNotify(ctx, s => {
         const missions = s.agentMissions || []
         const task = args.task_id ? findById(s.tasks, args.task_id, 'Tâche') : null
         if (args.client_id) findById(s.clients, args.client_id, 'Client')
@@ -255,7 +269,7 @@ export const MISSION_TOOLS = [
     description: "Met la mission en pause et pose une question à l'utilisateur (une information que lui seul détient). La réponse arrive dans « reponse_humaine ».",
     inputSchema: { type: 'object', required: ['id', 'question'], properties: { id: ID, question: { type: 'string' } } },
     async run(args, ctx) {
-      return mutateState(ctx, s => {
+      return writeAndNotify(ctx, s => {
         const m = findById(s.agentMissions, args.id, 'Mission')
         assertAgentOwns(m, ctx)
         const q = str(args.question, 1000)
@@ -280,7 +294,7 @@ export const MISSION_TOOLS = [
       },
     },
     async run(args, ctx) {
-      return mutateState(ctx, s => {
+      return writeAndNotify(ctx, s => {
         const m = findById(s.agentMissions, args.id, 'Mission')
         assertAgentOwns(m, ctx)
         const next = applyTransition(m, 'livrer', { actor: ctx.actorLabel })
@@ -300,7 +314,7 @@ export const MISSION_TOOLS = [
     description: "Clôt une mission qui ne peut pas aboutir, avec la raison (accès manquant, information introuvable, outil indisponible).",
     inputSchema: { type: 'object', required: ['id', 'raison'], properties: { id: ID, raison: { type: 'string' } } },
     async run(args, ctx) {
-      return mutateState(ctx, s => {
+      return writeAndNotify(ctx, s => {
         const m = findById(s.agentMissions, args.id, 'Mission')
         assertAgentOwns(m, ctx)
         Object.assign(m, applyTransition(m, 'echouer', { actor: ctx.actorLabel, text: str(args.raison, 1000) || '' }))
